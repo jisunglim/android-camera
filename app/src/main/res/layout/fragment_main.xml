@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              xmlns:tools="http://schemas.android.com/tools"
+              android:background="#FFFFFFFF"
+              android:orientation="vertical">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/app_name"
+        android:textStyle="bold"
+        android:textColor="@color/colorPrimary"
+        android:gravity="center"
+        android:paddingTop="140dp"
+        android:paddingBottom="100dp"
+        style="?android:textAppearanceLarge"/>
+
+    <Button
+        android:id="@+id/button_camera1_surface"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/camera_preview"
+        android:background="@color/colorAccent"
+        android:layout_margin="1dp"
+        android:textColor="#ffffff"
+        style="?android:buttonBarButtonStyle"/>
+    <Button
+        android:id="@+id/button_camera1_texture"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/camera_capture"
+        android:background="@color/colorAccent"
+        android:layout_margin="1dp"
+        android:textColor="#ffffff"
+        style="?android:buttonBarButtonStyle"/>
+    <Button
+        android:id="@+id/button_camera2_surface"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/camera_video"
+        android:background="@color/colorAccent"
+        android:layout_margin="1dp"
+        android:textColor="#ffffff"
+        style="?android:buttonBarButtonStyle"/>
+    <Button
+        android:id="@+id/button_camera2_texture"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/camera_final"
+        android:background="@color/colorAccent"
+        android:layout_margin="1dp"
+        android:textColor="#ffffff"
+        style="?android:buttonBarButtonStyle"/>
+
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        tools:text="Here will be some metrics for rotation."/>
+</LinearLayout>
