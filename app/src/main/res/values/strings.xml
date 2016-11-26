@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Camera API testing</string>
+
+    <!-- Main Activity -->
+    <string name="camera_preview">Camera Preview Test</string>
+    <string name="camera_capture">Camera Capture Test</string>
+    <string name="camera_video">Camera Video Test</string>
+    <string name="camera_final">Camera Final Test</string>
+
+    <!-- preview package -->
+    <string name="camera_2_request_permission">This application needs camera permission.</string>
+    <string name="camera_2_camera_error">This device doesn\'t support Camera2 API.</string>
+</resources>
