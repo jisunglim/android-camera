@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.graphics.Point;
@@ -22,10 +23,15 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
 import android.media.MediaActionSound;
+import android.media.MediaScannerConnection;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
+import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v13.app.ActivityCompat;
@@ -40,6 +46,7 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -50,6 +57,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -61,6 +69,7 @@ import io.jaylim.study.myapplication.R;
 import io.jaylim.study.myapplication.utils.BasicUtil;
 
 /**
+ *
  * Created by jaylim on 11/22/2016.
  */
 
@@ -71,10 +80,6 @@ public class CaptureFragment extends Fragment {
   public static CaptureFragment newInstance() {
     return new CaptureFragment();
   }
-
-  private String mCameraId;
-
-  public ResizableTextureView mTextureView;
 
   @Nullable
   @Override
@@ -91,16 +96,28 @@ public class CaptureFragment extends Fragment {
   ImageButton selfieButton;
   @BindView(R.id.capture_live_filter_button)
   ImageButton liveFilterButton;
+  @BindView(R.id.capture_texture_view)
+  ResizableTextureView mTextureView;
 
   @Override
   public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
     super.onViewCreated(view, savedInstanceState);
     mUnbinder = ButterKnife.bind(this, view);
 
-    captureButton.setOnTouchListener( (v, e) -> {
+    // Capture button
+    captureButton.setOnClickListener(v -> {
+      captureButton.setImageResource(R.drawable.capture_capture_button_hold_70dp);
+      String fileName = String.format(Locale.US, "%d.jpg", System.currentTimeMillis());
+      mFile = new File(mDir, fileName);
+      takePicture();
+    });
+
+    /*captureButton.setOnTouchListener( (v, e) -> {
       switch(e.getAction()) {
         case MotionEvent.ACTION_DOWN :
           captureButton.setImageResource(R.drawable.capture_capture_button_hold_70dp);
+          String fileName = String.format(Locale.US, "%d.jpg", System.currentTimeMillis());
+          mFile = new File(mDir, fileName);
           takePicture();
           return true;
         case MotionEvent.ACTION_UP :
@@ -109,42 +126,51 @@ public class CaptureFragment extends Fragment {
         default :
           return false;
       }
-    });
+    });*/
+
+    // Selfie button
     selfieButton.setOnClickListener(v -> {
       BasicUtil.showToast(getActivity(), "Selfie <-> Scene");
       closeCamera();
       mSelfieMode = !mSelfieMode;
       openCamera();
     });
-    liveFilterButton.setOnClickListener(v -> BasicUtil.showToast(getActivity(), "Live Filter"));
 
-    mTextureView = (ResizableTextureView) view.findViewById(R.id.capture_texture_view);
+    // Live filter button
+    liveFilterButton.setOnClickListener(v -> BasicUtil.showToast(getActivity(), "Live Filter"));
   }
 
-  File mFile;
+  private File mDir;
+
+  private File mFile;
 
   @Override
   public void onActivityCreated(@Nullable Bundle savedInstanceState) {
     super.onActivityCreated(savedInstanceState);
-    File sdCard = Environment.getExternalStorageDirectory();
-    Log.i(TAG, sdCard.toString());
+    File sdCard = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
     File dir = new File(sdCard.getAbsolutePath() + "/camera_capture_test");
-    String fileName = String.format("%d.jpg", System.currentTimeMillis());
     if (dir.isDirectory() || dir.mkdirs()) {
-      mFile = new File(dir, fileName);
-      Log.i(TAG, mFile.toString());
+      mDir = dir;
     } else {
-      mFile = new File(getActivity().getExternalFilesDir(null), fileName);
-      Log.i(TAG, mFile.toString());
-
+      // TODO - How to solve this problem?
+      Log.e(TAG, "There was problem to find out application-specified directory. " +
+          "The picture will be downloaded into the application root directory.");
+      mDir =getActivity().getExternalFilesDir(null);
     }
   }
+
+  @Override
+  public void onDestroyView() {
+    mUnbinder.unbind();
+    super.onDestroyView();
+  }
+
+  // TODO /////////////////////////////////////////////////////////////////////////////////////////
 
   @Override
   public void onResume() {
     super.onResume();
     startBackgroundThread();
-
     if (mTextureView.isAvailable()) {
       openCamera();
     } else {
@@ -159,18 +185,17 @@ public class CaptureFragment extends Fragment {
     super.onPause();
   }
 
-  @Override
-  public void onDestroyView() {
-    mUnbinder.unbind();
-    super.onDestroyView();
-  }
+  // TODO /////////////////////////////////////////////////////////////////////////////////////////
 
   // Semaphore for safe exit.
   private Semaphore mCameraOpenCloseLock = new Semaphore(1);
 
   /* FUNC - Open and close camera device */
   private MediaActionSound mShuttuer;
-  CameraDevice mCameraDevice;
+
+  private String mCameraId;
+
+  private CameraDevice mCameraDevice;
 
   private void openCamera() {
     if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.CAMERA)
@@ -445,11 +470,10 @@ public class CaptureFragment extends Fragment {
   //STEP////////////////////////////////////////////////////////////////////////////////////////
 
   /* FUNC - Image available callback listener */
-  ImageReader.OnImageAvailableListener mOnImageAvailableListener =
+  private ImageReader.OnImageAvailableListener mOnImageAvailableListener =
       new ImageReader.OnImageAvailableListener() {
         @Override
         public void onImageAvailable(ImageReader reader) {
-          BasicUtil.showToast(getActivity(), "Image Available : " + mFile);
           mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile));
         }
       };
@@ -459,10 +483,12 @@ public class CaptureFragment extends Fragment {
 
     private final Image mImage;
     private final File mFile;
+    // pr2ivate final Handler mUiHandler;
 
-    public ImageSaver(Image image, File file) {
+    ImageSaver(Image image, File file/*, Handler uiThreadHandler*/) {
       mImage = image;
       mFile = file;
+      // mUiHandler = uiThreadHandler;
     }
 
     @Override
@@ -476,6 +502,14 @@ public class CaptureFragment extends Fragment {
 
         output = new FileOutputStream(mFile);
         output.write(bytes);
+
+        // Bundle bundle = new Bundle();
+        // bundle.putSerializable("FILE_PATH", mFile);
+
+        // Message msg = Message.obtain();
+        // msg.setData(bundle);
+        // mUiHandler.sendMessage(msg);
+
       } catch (IOException e) {
         e.printStackTrace();
       } finally {
@@ -488,6 +522,39 @@ public class CaptureFragment extends Fragment {
           }
         }
       }
+    }
+  }
+
+  /* FUNC - UIthread Hanlder */
+  Handler mUiThreadHandler = new Handler(Looper.getMainLooper()) {
+    @Override
+    public void handleMessage(Message msg) {
+      BasicUtil.showToast(getActivity(), "Image capture is completed.");
+      File file = (File) msg.getData().getSerializable("FILE_PATH");
+
+      captureButton.setImageResource(R.drawable.capture_capture_button_release_70dp);
+
+      rescanFile(file);
+    }
+  };
+
+  private void rescanFile(File file) {
+    if (Build.VERSION.SDK_INT < 19)
+      getActivity().sendBroadcast(new Intent(
+          Intent.ACTION_MEDIA_MOUNTED,
+          Uri.parse("file://" + file.toString())));
+    else {
+      MediaScannerConnection
+          .scanFile(
+              getActivity(),
+              new String[]{file.toString()},
+              null,
+              (path, uri) -> {
+                Log.i("ExternalStorage", "Scanned "
+                    + path + ":");
+                Log.i("ExternalStorage", "-> uri="
+                    + uri);
+              });
     }
   }
 
@@ -742,6 +809,15 @@ public class CaptureFragment extends Fragment {
           // Shutter sound
           mShuttuer.play(MediaActionSound.SHUTTER_CLICK);
 
+          // Request some action to Ui thread.
+          Bundle bundle = new Bundle();
+          bundle.putSerializable("FILE_PATH", mFile);
+
+          Message msg = Message.obtain();
+          msg.setData(bundle);
+          mUiThreadHandler.sendMessage(msg);
+
+          // Show test
           BasicUtil.showToast(getActivity(), "Saved : " + mFile);
           Log.d(TAG, mFile.toString());
           unlockFocus();
@@ -772,7 +848,17 @@ public class CaptureFragment extends Fragment {
   private void startBackgroundThread() {
     mBackgroundThread = new HandlerThread("CameraBackground");
     mBackgroundThread.start();
-    mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
+    mBackgroundHandler = new Handler(mBackgroundThread.getLooper()) {
+      @Override
+      public void handleMessage(Message msg) {
+        super.handleMessage(msg);
+      }
+
+      @Override
+      public void dispatchMessage(Message msg) {
+        super.dispatchMessage(msg);
+      }
+    };
   }
 
   private void stopBackgroundThread() {
