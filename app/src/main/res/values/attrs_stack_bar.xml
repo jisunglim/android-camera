@@ -1,0 +1,12 @@
+<resources>
+    <declare-styleable name="StackBar">
+        <attr name="maximumTime" format="integer"/>
+
+        <attr name="backgroundColor" format="color"/>
+        <attr name="stackColor" format="color"/>
+        <attr name="dividerColor" format="color"/>
+
+        <attr name="trashBin" format="reference"/>
+        <attr name="barHeight" format="dimension"/>
+    </declare-styleable>
+</resources>

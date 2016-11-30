@@ -10,4 +10,12 @@
     <!-- preview package -->
     <string name="camera_2_request_permission">This application needs camera permission.</string>
     <string name="camera_2_camera_error">This device doesn\'t support Camera2 API.</string>
+
+    <!-- camera package -->
+
+    <!-- video package -->
+    <string name="video_shoot_button_desc">Start shooting video.</string>
+    <string name="video_music_button_desc">Select background music.</string>
+    <string name="video_library_button_desc">Choose video from library.</string>
+    <string name="video_selfie_mode_button_desc">Shift shooting mode into selfie or scene mode.</string>
 </resources>
