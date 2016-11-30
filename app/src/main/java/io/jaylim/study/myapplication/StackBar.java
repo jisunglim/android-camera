@@ -4,13 +4,10 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.Dimension;
 import android.support.annotation.UiThread;
 import android.util.AttributeSet;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
@@ -56,7 +53,7 @@ public class StackBar extends View {
   /**
    * The id of default drawable resource.
    */
-  private static final int DEFAULT_TRASH_BIN_REF = R.drawable.camera_trash_bin_button;
+  private static final int DEFAULT_TRASH_BIN_REF = R.drawable.stack_bar_trash_bin;
 
   /**
    * The default height of stack bar.
