@@ -14,7 +14,7 @@
         custom:stackColor="#FFFFFF"
         custom:dividerColor="#E8474E"
         custom:barHeight="15dp"
-        custom:trashBin="@drawable/camera_trash_bin_button"/>
+        custom:trashBin="@drawable/camera_trash_bin_button_30dp"/>
 
 
 </RelativeLayout>
