@@ -11,11 +11,18 @@
     <string name="camera_2_request_permission">This application needs camera permission.</string>
     <string name="camera_2_camera_error">This device doesn\'t support Camera2 API.</string>
 
-    <!-- camera package -->
+    <!-- capture package -->
+    <string name="capture_take_picture_button_desc">Take a picture.</string>
+    <string name="capture_music_button_desc">Select a background music.</string>
+    <string name="capture_library_button_desc">Choose a picture from library.</string>
+    <string name="capture_selfie_mode_button_desc">Shift into selfie or scene mode.</string>
+    <string name="capture_no_af_state_error">This device might not support auto focusing mode.</string>
+    <string name="capture_no_ae_state_error">This device might not support auto exposure mode.</string>
+    <string name="capture_no_awb_state_error">This device might not support auto white balance mode.</string>
 
     <!-- video package -->
-    <string name="video_shoot_button_desc">Start shooting video.</string>
-    <string name="video_music_button_desc">Select background music.</string>
-    <string name="video_library_button_desc">Choose video from library.</string>
-    <string name="video_selfie_mode_button_desc">Shift shooting mode into selfie or scene mode.</string>
+    <string name="video_shoot_button_desc">Start shooting a video.</string>
+    <string name="video_music_button_desc">Select a background music.</string>
+    <string name="video_library_button_desc">Choose videos from library.</string>
+    <string name="video_selfie_mode_button_desc">Shift into selfie or scene mode.</string>
 </resources>

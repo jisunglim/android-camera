@@ -32,6 +32,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v13.app.ActivityCompat;
@@ -40,17 +41,17 @@ import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.util.Size;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
-import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,12 +65,12 @@ import java.util.concurrent.TimeUnit;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
 import butterknife.Unbinder;
 import io.jaylim.study.myapplication.R;
 import io.jaylim.study.myapplication.utils.BasicUtil;
 
 /**
- *
  * Created by jaylim on 11/22/2016.
  */
 
@@ -90,73 +91,45 @@ public class CaptureFragment extends Fragment {
 
   Unbinder mUnbinder;
 
-  @BindView(R.id.capture_capture_button_release)
+  @BindView(R.id.capture_take_picture_button)
   ImageButton captureButton;
-  @BindView(R.id.capture_selfie_button)
+  @BindView(R.id.capture_selfie_mode_button)
   ImageButton selfieButton;
-  @BindView(R.id.capture_live_filter_button)
-  ImageButton liveFilterButton;
   @BindView(R.id.capture_texture_view)
   ResizableTextureView mTextureView;
+
+  @OnClick(R.id.capture_take_picture_button)
+  public void _captureImage() {
+    captureButton.setImageResource(R.drawable.camera_shoot_button_hold_70dp);
+    setUpImageFile();
+    takePicture();
+  }
+
+  @OnClick(R.id.capture_selfie_mode_button)
+  public void _shiftSelfieMode() {
+    closeCamera();
+    mSelfieMode = !mSelfieMode;
+    openCamera();
+
+  }
+
+  @OnClick(R.id.capture_texture_view)
+  public void _triggerFocus() {
+
+  }
+
+  // STEP - STORAGE DIR ///////////////////////////////////////////////////////////////////////////
 
   @Override
   public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
     super.onViewCreated(view, savedInstanceState);
     mUnbinder = ButterKnife.bind(this, view);
-
-    // Capture button
-    captureButton.setOnClickListener(v -> {
-      captureButton.setImageResource(R.drawable.capture_capture_button_hold_70dp);
-      String fileName = String.format(Locale.US, "%d.jpg", System.currentTimeMillis());
-      mFile = new File(mDir, fileName);
-      takePicture();
-    });
-
-    /*captureButton.setOnTouchListener( (v, e) -> {
-      switch(e.getAction()) {
-        case MotionEvent.ACTION_DOWN :
-          captureButton.setImageResource(R.drawable.capture_capture_button_hold_70dp);
-          String fileName = String.format(Locale.US, "%d.jpg", System.currentTimeMillis());
-          mFile = new File(mDir, fileName);
-          takePicture();
-          return true;
-        case MotionEvent.ACTION_UP :
-          captureButton.setImageResource(R.drawable.capture_capture_button_release_70dp);
-          return true;
-        default :
-          return false;
-      }
-    });*/
-
-    // Selfie button
-    selfieButton.setOnClickListener(v -> {
-      BasicUtil.showToast(getActivity(), "Selfie <-> Scene");
-      closeCamera();
-      mSelfieMode = !mSelfieMode;
-      openCamera();
-    });
-
-    // Live filter button
-    liveFilterButton.setOnClickListener(v -> BasicUtil.showToast(getActivity(), "Live Filter"));
   }
-
-  private File mDir;
-
-  private File mFile;
 
   @Override
   public void onActivityCreated(@Nullable Bundle savedInstanceState) {
     super.onActivityCreated(savedInstanceState);
-    File sdCard = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
-    File dir = new File(sdCard.getAbsolutePath() + "/camera_capture_test");
-    if (dir.isDirectory() || dir.mkdirs()) {
-      mDir = dir;
-    } else {
-      // TODO - How to solve this problem?
-      Log.e(TAG, "There was problem to find out application-specified directory. " +
-          "The picture will be downloaded into the application root directory.");
-      mDir =getActivity().getExternalFilesDir(null);
-    }
+    setUpStorageDir();
   }
 
   @Override
@@ -164,8 +137,6 @@ public class CaptureFragment extends Fragment {
     mUnbinder.unbind();
     super.onDestroyView();
   }
-
-  // TODO /////////////////////////////////////////////////////////////////////////////////////////
 
   @Override
   public void onResume() {
@@ -185,9 +156,54 @@ public class CaptureFragment extends Fragment {
     super.onPause();
   }
 
-  // TODO /////////////////////////////////////////////////////////////////////////////////////////
+  // STEP - STORAGE DIR ///////////////////////////////////////////////////////////////////////////
 
-  // Semaphore for safe exit.
+  private File mDir;
+
+  private File mFile;
+
+  /* Get access storage directory */
+  private void setUpStorageDir() {
+    File storageRoot = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
+    File dir = new File(storageRoot.getAbsolutePath() + "/camera_capture_test");
+    if (dir.isDirectory() || dir.mkdirs()) {
+      mDir = dir;
+    } else {
+      // TODO - How to solve this problem?
+      Log.e(TAG, "There was problem to find out application-specified directory. " +
+          "The picture will be downloaded into the application root directory.");
+      mDir = getActivity().getExternalFilesDir(null);
+    }
+  }
+
+  private void setUpImageFile() {
+    String fileName = String.format(Locale.US, "%d.jpg", System.currentTimeMillis());
+    mFile = new File(mDir, fileName);
+  }
+
+  private void rescanFile(File file) {
+    if (Build.VERSION.SDK_INT < 19)
+      getActivity().sendBroadcast(new Intent(
+          Intent.ACTION_MEDIA_MOUNTED,
+          Uri.parse("file://" + file.toString())));
+    else {
+      MediaScannerConnection
+          .scanFile(
+              getActivity(),
+              new String[]{file.toString()},
+              null,
+              (path, uri) -> {
+                Log.i("ExternalStorage", "Scanned "
+                    + path + ":");
+                Log.i("ExternalStorage", "-> uri="
+                    + uri);
+              });
+    }
+  }
+
+  // STEP /////////////////////////////////////////////////////////////////////////////////////////
+
+  /* FUNC - Semaphore for safe exit. */
   private Semaphore mCameraOpenCloseLock = new Semaphore(1);
 
   /* FUNC - Open and close camera device */
@@ -204,12 +220,8 @@ public class CaptureFragment extends Fragment {
       return;
     }
 
-    // Shutter sound
-    mShuttuer = new MediaActionSound();
-    mShuttuer.load(MediaActionSound.SHUTTER_CLICK);
-
-
     setUpCameraOutputs();
+
     Activity activity = getActivity();
     CameraManager manager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
     try {
@@ -227,13 +239,13 @@ public class CaptureFragment extends Fragment {
   private void closeCamera() {
     try {
       mCameraOpenCloseLock.acquire();
-      if (null != mShuttuer) {
-        mShuttuer.release();
-        mShuttuer= null;
-      }
       if (null != mCompoundSession) {
         mCompoundSession.close();
         mCompoundSession = null;
+      }
+      if (null != mShuttuer) {
+        mShuttuer.release();
+        mShuttuer = null;
       }
       if (null != mCameraDevice) {
         mCameraDevice.close();
@@ -250,7 +262,43 @@ public class CaptureFragment extends Fragment {
     }
   }
 
-  //STEP////////////////////////////////////////////////////////////////////////////////////////
+  /* FUNC - Camera device state callback */
+  private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
+    @Override
+    public void onOpened(@NonNull CameraDevice camera) {
+      // Camera device
+      mCameraDevice = camera;
+
+      // Shutter sound
+      mShuttuer = new MediaActionSound();
+      mShuttuer.load(MediaActionSound.SHUTTER_CLICK);
+
+      // Session
+      createCameraCompoundSession();
+
+      mCameraOpenCloseLock.release();
+    }
+
+    @Override
+    public void onDisconnected(@NonNull CameraDevice camera) {
+      mCameraOpenCloseLock.release();
+      camera.close();
+      mCameraDevice = null;
+    }
+
+    @Override
+    public void onError(@NonNull CameraDevice camera, int error) {
+      mCameraOpenCloseLock.release();
+      camera.close();
+      mCameraDevice = null;
+      Activity activity = getActivity();
+      if (null != activity) {
+        activity.finish();
+      }
+    }
+  };
+
+  // STEP /////////////////////////////////////////////////////////////////////////////////////////
 
   /* FUNC - set camera outputs */
   private int mSensorOrientation;
@@ -261,8 +309,8 @@ public class CaptureFragment extends Fragment {
 
   private ImageReader mImageReader;
 
-  private final static int BASE_SIDE_WIDTH = 0;
-  private final static int BASE_SIDE_HEIGHT = 1;
+  private final static int BASE_DIMENSION_WIDTH = 0;
+  private final static int BASE_DIMENSION_HEIGHT = 1;
 
   private boolean mSelfieMode = false;
 
@@ -314,6 +362,8 @@ public class CaptureFragment extends Fragment {
         int displayRotation = activity.getWindowManager().getDefaultDisplay().getRotation();
         mSensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
 
+        Log.e(TAG, "DR" + displayRotation + "SR" + mSensorOrientation);
+
         boolean isOrthogonal = checkOrthogonality(displayRotation, mSensorOrientation);
 
         // Get aspectRation what we want
@@ -326,7 +376,7 @@ public class CaptureFragment extends Fragment {
             new Size(displaySize.x, displaySize.y);
 
         // Get base line and its length
-        int baseSide = isOrthogonal ? BASE_SIDE_HEIGHT : BASE_SIDE_WIDTH;
+        int baseSide = isOrthogonal ? BASE_DIMENSION_HEIGHT : BASE_DIMENSION_WIDTH;
         int baseLength = displaySize.x;
 
 
@@ -382,7 +432,7 @@ public class CaptureFragment extends Fragment {
   }
 
   /* FUNC - Choose max resolution picture size */
-  private static Size choosePictureSize(Size[] choices, Size aspectRatio, int baseSide) {
+  private static Size choosePictureSize(Size[] choices, Size aspectRatio, int baseDimension) {
     List<Size> feasibleSize = new ArrayList<>();
     List<Size> longerHeight = new ArrayList<>();
     List<Size> longerWidth = new ArrayList<>();
@@ -405,10 +455,10 @@ public class CaptureFragment extends Fragment {
       return Collections.max(feasibleSize, new SizeComparator());
     } else {
       Log.e(TAG, "Couldn't find any suitable preview size.");
-      switch (baseSide) {
-        case BASE_SIDE_HEIGHT:
+      switch (baseDimension) {
+        case BASE_DIMENSION_HEIGHT:
           return Collections.max(longerHeight, new SizeComparator());
-        case BASE_SIDE_WIDTH:
+        case BASE_DIMENSION_WIDTH:
           return Collections.max(longerWidth, new SizeComparator());
         default:
           Log.e(TAG, "Invalid value for baseSide parameter.");
@@ -419,7 +469,7 @@ public class CaptureFragment extends Fragment {
 
   /* FUNC - Choose optimal preview size */
   private static Size choosePreviewSize(Size[] choices, Size aspectRatio,
-                                        int baseLength, int baseSide) {
+                                        int baseLength, int baseDimension) {
 
     // Collect the supported resolutions that are at least as big as the preview Surface
     List<Size> bigEnough = new ArrayList<>();
@@ -432,7 +482,8 @@ public class CaptureFragment extends Fragment {
     int h = aspectRatio.getHeight();
 
     for (Size option : choices) {
-      int optionLength = (BASE_SIDE_WIDTH == baseSide) ? option.getWidth() : option.getHeight();
+      int optionLength = (BASE_DIMENSION_WIDTH == baseDimension) ?
+          option.getWidth() : option.getHeight();
 
       // Confirm feasibility : Maximum size && Aspect ratio
       if (option.getHeight() == option.getWidth() * h / w) {
@@ -467,7 +518,7 @@ public class CaptureFragment extends Fragment {
 
   }
 
-  //STEP////////////////////////////////////////////////////////////////////////////////////////
+  // STEP /////////////////////////////////////////////////////////////////////////////////////////
 
   /* FUNC - Image available callback listener */
   private ImageReader.OnImageAvailableListener mOnImageAvailableListener =
@@ -525,42 +576,59 @@ public class CaptureFragment extends Fragment {
     }
   }
 
-  /* FUNC - UIthread Hanlder */
+
+  /* FUNC - UI LOGIC */
+  private static final int UI_LOGIC_RELEASE_CAPTURE_BUTTON = 0x0001;
+  private static final int UI_LOGIC_ACTIVATE_OK_BUTTON = 0x0002;
+  private static final int UI_LOGIC_DEACTIVATE_OK_BUTTON = 0x003;
+
+  @Retention(RetentionPolicy.SOURCE)
+  @IntDef({UI_LOGIC_RELEASE_CAPTURE_BUTTON, UI_LOGIC_ACTIVATE_OK_BUTTON,
+      UI_LOGIC_DEACTIVATE_OK_BUTTON})
+  public @interface UiLogic {
+  }
+
+  private static final String UI_LOGIC = "UiLogic";
+
+  public void requestUiChange(@UiLogic int request) {
+    // Request some action to Ui thread.
+    Bundle bundle = new Bundle();
+    bundle.putSerializable(UI_LOGIC, request);
+
+    Message msg = Message.obtain();
+    msg.setData(bundle);
+    mUiThreadHandler.sendMessage(msg);
+  }
+
+  /* FUNC - UI Thread Hanlder */
   Handler mUiThreadHandler = new Handler(Looper.getMainLooper()) {
     @Override
     public void handleMessage(Message msg) {
-      BasicUtil.showToast(getActivity(), "Image capture is completed.");
-      File file = (File) msg.getData().getSerializable("FILE_PATH");
+      int uiLogicRequest = msg.getData().getInt(UI_LOGIC);
 
-      captureButton.setImageResource(R.drawable.capture_capture_button_release_70dp);
-
-      rescanFile(file);
+      switch (uiLogicRequest) {
+        case UI_LOGIC_RELEASE_CAPTURE_BUTTON:
+          captureButton.setImageResource(R.drawable.camera_shoot_button_release_70dp);
+          break;
+        case UI_LOGIC_ACTIVATE_OK_BUTTON:
+          // TODO - Activate ok button
+          break;
+        case UI_LOGIC_DEACTIVATE_OK_BUTTON:
+          // TODO
+          break;
+        default:
+          // Nothing to do.
+          break;
+      }
     }
   };
 
-  private void rescanFile(File file) {
-    if (Build.VERSION.SDK_INT < 19)
-      getActivity().sendBroadcast(new Intent(
-          Intent.ACTION_MEDIA_MOUNTED,
-          Uri.parse("file://" + file.toString())));
-    else {
-      MediaScannerConnection
-          .scanFile(
-              getActivity(),
-              new String[]{file.toString()},
-              null,
-              (path, uri) -> {
-                Log.i("ExternalStorage", "Scanned "
-                    + path + ":");
-                Log.i("ExternalStorage", "-> uri="
-                    + uri);
-              });
-    }
-  }
+  // STEP /////////////////////////////////////////////////////////////////////////////////////////
 
-  //STEP////////////////////////////////////////////////////////////////////////////////////////
-
-  /* FUNC - Preview Session */
+  /* FUNC - Compount Session */
+  /**
+   * Reusable builder for configuration of request builder.
+   */
   private CaptureRequest.Builder mPreviewRequestBuilder;
   private CaptureRequest mPreviewRequest;
   private CameraCaptureSession mCompoundSession;
@@ -588,6 +656,7 @@ public class CaptureFragment extends Fragment {
     }
   }
 
+  /* FUNC - Compound session state callback*/
   private CameraCaptureSession.StateCallback mCompoundSessionStateCallback =
       new CameraCaptureSession.StateCallback() {
         @Override
@@ -597,13 +666,10 @@ public class CaptureFragment extends Fragment {
           }
 
           mCompoundSession = session;
-          try {
-            // Auto focus should be continuous for camera preview.
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
-                CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
 
-            // Flash is automatically enabled when necessary.
-            setAutoExposure(mPreviewRequestBuilder);
+          try {
+            // Initialize 3A mode for camera preview.
+            initialize3aMode(mPreviewRequestBuilder);
 
             // Finally, we start displaying the camera preview.
             mPreviewRequest = mPreviewRequestBuilder.build();
@@ -621,69 +687,72 @@ public class CaptureFragment extends Fragment {
         }
       };
 
-  /* FUNC - Capture session capture callback */
-
+  /* FUNC - Compound session preview request capture callback */
   private int mState = STATE_PREVIEW;
 
   private static final int STATE_PREVIEW = 0;
-  private static final int STATE_WAITING_LOCK_FOCUS = 1;
+  private static final int STATE_WAITING_FOCUS_LOCK = 1;
   private static final int STATE_WAITING_PRECAPTURE = 2;
-  private static final int STATE_WAITING_OTHER_THAN_PRECAPTURE = 3;
+  private static final int STATE_WAITING_NON_PRECAPTURE = 3;
   private static final int STATE_PICTURE_TAKEN = 4;
+
+  private static final String STATE_DIALOG = "stateDialog";
 
   private CameraCaptureSession.CaptureCallback mCaptureCallback =
       new CameraCaptureSession.CaptureCallback() {
 
         private void process(CaptureResult result) {
           switch (mState) {
-            case STATE_PREVIEW:
-              // Nothing to do if we are on preview state (default)
-              break;
-            case STATE_WAITING_LOCK_FOCUS: {
+            case STATE_WAITING_FOCUS_LOCK: { /* Only AF is triggered */
               Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
-              // No AF, no AE.
-              if (null == afState) {
-                // One of the destination state for Auto Focus
-                captureStillPicture();
 
-              } else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState ||
-                  CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState) {
-
-                // CONTROL_AE_STATE can be null on some devices
+              if (null == afState || CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState) {
                 Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                if (aeState == null ||
-                    aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
-                  // One of the destination state for Auto Exposure
-                  // Good or bad AF, and Good or no AE.
-                  mState = STATE_PICTURE_TAKEN;
-                  captureStillPicture();
-                } else {
-                  // Good or bad AF, and reprocessing AE.
-                  runPrecaptureSequence();
-                  // At this point it comes out that 'mState = STATE_WAITING_PRECAPTURE' and
-                  // AR_PRECAPTURE_TRIGGER_START is set on the 'mPreviewRequest'
+
+                if (null == aeState || CaptureResult.CONTROL_AE_STATE_CONVERGED == aeState) {
+                  Integer awbState = result.get(CaptureResult.CONTROL_AWB_STATE);
+
+                  if (null == awbState || CaptureResult.CONTROL_AWB_STATE_CONVERGED == awbState) {
+                    mState = STATE_PICTURE_TAKEN;
+                    captureStillPicture(); // START
+
+                  } /* else { // Do nothing } */
+
+                } else if (CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED == aeState) {
+                  mState = STATE_WAITING_PRECAPTURE;
+                  triggerPrecapture(); // START
+
                 }
-              }
-              //
-              break;
-            }
-            case STATE_WAITING_PRECAPTURE: {
-              // CONTROL_AE_STATE can be null on some devices
-              Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-              if (aeState == null ||
-                  aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE ||
-                  aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED) {
-                mState = STATE_WAITING_OTHER_THAN_PRECAPTURE;
+
+              } else if (CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState) {
+                mState = STATE_WAITING_FOCUS_LOCK;
+                retryLockFocus(); // CANCEL -> START
+
               }
               break;
             }
-            case STATE_WAITING_OTHER_THAN_PRECAPTURE: {
+
+            case STATE_WAITING_PRECAPTURE: { /* AF and AE precapture are triggered */
+              Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+
+              if (aeState == null || aeState == CaptureRequest.CONTROL_AE_STATE_PRECAPTURE) {
+                mState = STATE_WAITING_NON_PRECAPTURE;
+              }
+              break;
+            }
+
+            case STATE_WAITING_NON_PRECAPTURE: {
               // CONTROL_AE_STATE can be null on some devices
               Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-              if (aeState == null || aeState != CaptureResult.CONTROL_AE_STATE_PRECAPTURE) {
-                // Every AE processing finished and now capture the picture.
-                mState = STATE_PICTURE_TAKEN;
-                captureStillPicture();
+              if (null == aeState || aeState != CaptureResult.CONTROL_AE_STATE_PRECAPTURE) {
+                Integer awbState = result.get(CaptureResult.CONTROL_AWB_STATE);
+
+                if (null == awbState || CaptureResult.CONTROL_AWB_STATE_CONVERGED == awbState) {
+                  mState = STATE_PICTURE_TAKEN;
+                  captureStillPicture(); // START
+
+                } /* else { // Do nothing } */
+
               }
               break;
             }
@@ -701,80 +770,77 @@ public class CaptureFragment extends Fragment {
         public void onCaptureCompleted(@NonNull CameraCaptureSession session,
                                        @NonNull CaptureRequest request,
                                        @NonNull TotalCaptureResult result) {
+
           process(result);
         }
       };
 
-  /*  */
 
-  /* FUNC - Camera stateCallback */
-  private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
-    @Override
-    public void onOpened(@NonNull CameraDevice camera) {
-      mCameraOpenCloseLock.release();
-      mCameraDevice = camera;
-      createCameraCompoundSession();
-    }
-
-    @Override
-    public void onDisconnected(@NonNull CameraDevice camera) {
-      mCameraOpenCloseLock.release();
-      camera.close();
-      mCameraDevice = null;
-    }
-
-    @Override
-    public void onError(@NonNull CameraDevice camera, int error) {
-      mCameraOpenCloseLock.release();
-      camera.close();
-      mCameraDevice = null;
-      Activity activity = getActivity();
-      if (null != activity) {
-        activity.finish();
-      }
-    }
-  };
-
-  // TODO ///////////////////////////////////////////////////////////////////////////////////////
+  // STEP /////////////////////////////////////////////////////////////////////////////////////////
 
   private void takePicture() {
     lockFocus();
   }
 
-
   /* Set auto lock focusing */
   private void lockFocus() {
+    mState = STATE_WAITING_FOCUS_LOCK;
     try {
-      // Tell the camera to lock focus before capture the image
+      // Try lock focus
+      initialize3aMode(mPreviewRequestBuilder);
       mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
           CameraMetadata.CONTROL_AF_TRIGGER_START);
-      mState = STATE_WAITING_LOCK_FOCUS;
+
       mCompoundSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
           mBackgroundHandler);
     } catch (CameraAccessException e) {
       e.printStackTrace();
     }
+  }
+
+  private void retryLockFocus() {
+    unlockFocus();
+    lockFocus();
   }
 
   private void unlockFocus() {
-    mState = STATE_PREVIEW;
-    restartSession();
+    try {
+      // Initialize 3A mode for camera preview.
+      initialize3aMode(mPreviewRequestBuilder);
+      mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+          CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
+
+      mCompoundSession.capture(mPreviewRequestBuilder.build(), null,
+          mBackgroundHandler);
+    } catch (CameraAccessException e) {
+      e.printStackTrace();
+    }
   }
 
-  private void restartSession() {
-    if (null != mCompoundSession) {
-      mCompoundSession.close();
-      mCompoundSession = null;
+  private void startPreview() {
+    try {
+      // Finally, we restart displaying the camera preview.
+      mState = STATE_PREVIEW;
+      mCompoundSession.setRepeatingRequest(mPreviewRequest, mCaptureCallback, mBackgroundHandler);
+    } catch (CameraAccessException e) {
+      e.printStackTrace();
     }
-    createCameraCompoundSession();
+  }
+
+  private void stopPreview() {
+    try {
+      mCompoundSession.stopRepeating();
+    } catch (CameraAccessException e) {
+      e.printStackTrace();
+    }
   }
 
   /* If it is failed to lock focus, we should set precapture sequence as a next option */
-  private void runPrecaptureSequence() {
+  private void triggerPrecapture() {
     try {
+      initialize3aMode(mPreviewRequestBuilder);
       mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
           CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
-      mState = STATE_WAITING_PRECAPTURE;
       mCompoundSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
           mBackgroundHandler);
     } catch (CameraAccessException e) {
@@ -782,7 +848,9 @@ public class CaptureFragment extends Fragment {
     }
   }
 
-  /*  */
+
+  // STEP /////////////////////////////////////////////////////////////////////////////////////////
+
   private void captureStillPicture() {
     try {
       final Activity activity = getActivity();
@@ -794,9 +862,7 @@ public class CaptureFragment extends Fragment {
           mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
       captureBuilder.addTarget(mImageReader.getSurface());
 
-      captureBuilder.set(CaptureRequest.CONTROL_AF_MODE,
-          CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-      setAutoExposure(captureBuilder);
+      initialize3aMode(captureBuilder);
 
       captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, mSensorOrientation);
 
@@ -809,36 +875,76 @@ public class CaptureFragment extends Fragment {
           // Shutter sound
           mShuttuer.play(MediaActionSound.SHUTTER_CLICK);
 
-          // Request some action to Ui thread.
-          Bundle bundle = new Bundle();
-          bundle.putSerializable("FILE_PATH", mFile);
-
-          Message msg = Message.obtain();
-          msg.setData(bundle);
-          mUiThreadHandler.sendMessage(msg);
+          // Release button
+          requestUiChange(UI_LOGIC_RELEASE_CAPTURE_BUTTON);
 
           // Show test
           BasicUtil.showToast(getActivity(), "Saved : " + mFile);
           Log.d(TAG, mFile.toString());
           unlockFocus();
+          startPreview();
+
+          // rescan file
+          rescanFile(mFile);
         }
       };
-      mCompoundSession.stopRepeating();
+
+      stopPreview();
       mCompoundSession.capture(captureBuilder.build(), CaptureCallback, null);
     } catch (CameraAccessException e) {
       e.printStackTrace();
     }
   }
 
-  private void setAutoExposure(CaptureRequest.Builder requestBuilder) {
+  // STEP /////////////////////////////////////////////////////////////////////////////////////////
+
+  private void initialize3aMode(CaptureRequest.Builder previewRequestBuilder) {
+    setPreviewAutoFocus(previewRequestBuilder);
+    setPreviewAutoExposure(previewRequestBuilder);
+    setPreviewAutoWhiteBalance(previewRequestBuilder);
+  }
+
+  /**
+   * Set or reset AF mode of previewRequestBuilder.
+   *
+   * @param previewRequestBuilder Request builder for setting preview capture.
+   */
+  private void setPreviewAutoFocus(CaptureRequest.Builder previewRequestBuilder) {
+    previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+        CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+    previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+        CaptureRequest.CONTROL_AF_TRIGGER_IDLE);
+  }
+
+  /**
+   * Set or reset AE mode of previewRequestBuilder.
+   *
+   * @param previewRequestBuilder Request builder for setting preview capture.
+   */
+  private void setPreviewAutoExposure(CaptureRequest.Builder previewRequestBuilder) {
     if (mFlashSupported) {
-      requestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
+      previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
           CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
     } else {
-      requestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
+      previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
           CaptureRequest.CONTROL_AE_MODE_ON);
     }
+
+    previewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+        CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
   }
+
+  /**
+   * Set or reset AWB mode of previewRequestBuilder.
+   *
+   * @param previewRequestBuilder Request builder for setting preview capture.
+   */
+  private void setPreviewAutoWhiteBalance(CaptureRequest.Builder previewRequestBuilder) {
+    previewRequestBuilder.set(CaptureRequest.CONTROL_AWB_MODE,
+        CaptureRequest.CONTROL_AWB_MODE_AUTO);
+  }
+
+  // STEP /////////////////////////////////////////////////////////////////////////////////////////
 
   /* FUNC - Background Thread -> Looper -> Handler */
   HandlerThread mBackgroundThread;
@@ -872,6 +978,8 @@ public class CaptureFragment extends Fragment {
     }
   }
 
+  // STEP /////////////////////////////////////////////////////////////////////////////////////////
+
   /* FUNC - TextureView */
   private final TextureView.SurfaceTextureListener mSurfaceTextureListener
       = new TextureView.SurfaceTextureListener() {
@@ -896,6 +1004,8 @@ public class CaptureFragment extends Fragment {
 
   };
 
+  // STEP /////////////////////////////////////////////////////////////////////////////////////////
+
   /* FUNC - Permission logic */
   private final String FRAGMENT_DIALOG = "dialog";
 
@@ -919,6 +1029,28 @@ public class CaptureFragment extends Fragment {
       return new AlertDialog.Builder(activity)
           .setMessage(getArguments().getString(ARG_MESSAGE))
           .setPositiveButton(android.R.string.ok, (dialogInterface, i) -> activity.finish())
+          .create();
+    }
+  }
+
+  public static class InformDialog extends DialogFragment {
+    private static final String ARG_MESSAGE = "message";
+
+    public static InformDialog newInstance(String message) {
+      InformDialog dialog = new InformDialog();
+      Bundle args = new Bundle();
+      args.putString(ARG_MESSAGE, message);
+      dialog.setArguments(args);
+      return dialog;
+    }
+
+    @NonNull
+    @Override
+    public Dialog onCreateDialog(Bundle savedInstanceState) {
+      final Activity activity = getActivity();
+      return new AlertDialog.Builder(activity)
+          .setMessage(getArguments().getString(ARG_MESSAGE))
+          .setPositiveButton(android.R.string.ok, (dialogInterface, i) -> this.dismiss())
           .create();
     }
   }
