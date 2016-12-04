@@ -314,6 +314,8 @@ public class CaptureFragment extends Fragment {
 
   private boolean mSelfieMode = false;
 
+  private int mHardwareLevel;
+
   /**
    * Sets up member variables related to camera.
    * <p>
@@ -343,14 +345,16 @@ public class CaptureFragment extends Fragment {
         CameraCharacteristics characteristics
             = manager.getCameraCharacteristics(cameraId);
 
-        // TODO - Do not use front facing camera yet
-        Integer cameraMode = mSelfieMode ? CameraCharacteristics.LENS_FACING_FRONT
+        Integer expectedLensFacing = mSelfieMode ? CameraCharacteristics.LENS_FACING_FRONT
             : CameraCharacteristics.LENS_FACING_BACK;
 
-        Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
-        if (facing != null && !Objects.equals(facing, cameraMode)) {
+        Integer lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
+        if (lensFacing == null || !Objects.equals(lensFacing, expectedLensFacing)) {
           continue;
         }
+
+        //noinspection ConstantConditions
+        mHardwareLevel = characteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
 
         StreamConfigurationMap map = characteristics.get(
             CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
@@ -362,27 +366,21 @@ public class CaptureFragment extends Fragment {
         int displayRotation = activity.getWindowManager().getDefaultDisplay().getRotation();
         mSensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
 
-        Log.e(TAG, "DR" + displayRotation + "SR" + mSensorOrientation);
-
         boolean isOrthogonal = checkOrthogonality(displayRotation, mSensorOrientation);
 
         // Get aspectRation what we want
         Point displaySize = new Point();
         activity.getWindowManager().getDefaultDisplay().getSize(displaySize);
 
-        Log.e(TAG, "Device Size - width : " + displaySize.x + ", height : " + displaySize.y);
-
         Size aspectRatio = isOrthogonal ? new Size(displaySize.y, displaySize.x) :
             new Size(displaySize.x, displaySize.y);
 
         // Get base line and its length
-        int baseSide = isOrthogonal ? BASE_DIMENSION_HEIGHT : BASE_DIMENSION_WIDTH;
+        int baseDimension = isOrthogonal ? BASE_DIMENSION_HEIGHT : BASE_DIMENSION_WIDTH;
         int baseLength = displaySize.x;
 
-
-        // TODO - Image capture only support 4:3 and 16:9 capture on Note5
         Size imageSize = choosePictureSize(map.getOutputSizes(ImageFormat.JPEG),
-            aspectRatio, baseSide);
+            aspectRatio, baseDimension);
         mImageReader = ImageReader.newInstance(imageSize.getWidth(), imageSize.getHeight(),
             ImageFormat.JPEG, 2);
         mImageReader.setOnImageAvailableListener(
@@ -390,7 +388,7 @@ public class CaptureFragment extends Fragment {
 
         // Choose preview size
         mPreviewSize = choosePreviewSize(map.getOutputSizes(SurfaceTexture.class),
-            imageSize, baseLength, baseSide);
+            imageSize, baseLength, baseDimension);
 
         mTextureView.setAspectRatio(
             mPreviewSize.getHeight(), mPreviewSize.getWidth()
@@ -399,11 +397,6 @@ public class CaptureFragment extends Fragment {
         // Set flash
         Boolean available = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
         mFlashSupported = (available == null) ? false : available;
-
-        Log.e(TAG, "ImageSize - width : " + imageSize.getWidth()
-            + ", height : " + imageSize.getHeight());
-        Log.e(TAG, "PreviewSize - width : " + mPreviewSize.getWidth()
-            + ", height : " + mPreviewSize.getHeight());
 
         mCameraId = cameraId;
         return;
@@ -476,7 +469,7 @@ public class CaptureFragment extends Fragment {
     // Collect the supported resolutions that are smaller than the preview Surface
     List<Size> notBigEnough = new ArrayList<>();
 
-    // TODO - Ignore the case where the size having image capture's aspect ratio don't exist.
+    // TODO - Ignore the case that there is no size which has same aspect ratio with image capture.
 
     int w = aspectRatio.getWidth();
     int h = aspectRatio.getHeight();
@@ -576,6 +569,7 @@ public class CaptureFragment extends Fragment {
     }
   }
 
+  // STEP /////////////////////////////////////////////////////////////////////////////////////////
 
   /* FUNC - UI LOGIC */
   private static final int UI_LOGIC_RELEASE_CAPTURE_BUTTON = 0x0001;
@@ -687,14 +681,16 @@ public class CaptureFragment extends Fragment {
         }
       };
 
+  // STEP /////////////////////////////////////////////////////////////////////////////////////////
+
   /* FUNC - Compound session preview request capture callback */
   private int mState = STATE_PREVIEW;
 
   private static final int STATE_PREVIEW = 0;
   private static final int STATE_WAITING_FOCUS_LOCK = 1;
-  private static final int STATE_WAITING_PRECAPTURE = 2;
-  private static final int STATE_WAITING_NON_PRECAPTURE = 3;
-  private static final int STATE_PICTURE_TAKEN = 4;
+  private static final int STATE_WAITING_PRECAPTURE = 3;
+  private static final int STATE_WAITING_NON_PRECAPTURE = 4;
+  private static final int STATE_PICTURE_TAKEN = 5;
 
   private static final String STATE_DIALOG = "stateDialog";
 
@@ -702,11 +698,35 @@ public class CaptureFragment extends Fragment {
       new CameraCaptureSession.CaptureCallback() {
 
         private void process(CaptureResult result) {
+          switch (mHardwareLevel) {
+            case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_3 :
+              extendedFullProcess(result);
+              break;
+            case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_FULL :
+              fullProcess(result);
+              break;
+            case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED :
+              limitedProcess(result);
+              break;
+            case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY :
+              legacyProcess(result);
+              break;
+          }
+        }
+
+        private void extendedFullProcess(CaptureResult result) {
+        }
+
+        private void fullProcess(CaptureResult result) {
           switch (mState) {
+            case STATE_PREVIEW :
+              // Do nothing
+              break;
             case STATE_WAITING_FOCUS_LOCK: { /* Only AF is triggered */
               Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
 
-              if (null == afState || CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState) {
+              if (null == afState || CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState
+                  || CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState) {
                 Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
 
                 if (null == aeState || CaptureResult.CONTROL_AE_STATE_CONVERGED == aeState) {
@@ -715,19 +735,23 @@ public class CaptureFragment extends Fragment {
                   if (null == awbState || CaptureResult.CONTROL_AWB_STATE_CONVERGED == awbState) {
                     mState = STATE_PICTURE_TAKEN;
                     captureStillPicture(); // START
+                    Log.e(TAG, "1");
 
-                  } /* else { // Do nothing } */
+                  } else {
+                    Log.e(TAG, "2");
+                  }
 
                 } else if (CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED == aeState) {
                   mState = STATE_WAITING_PRECAPTURE;
-                  triggerPrecapture(); // START
+                  triggerPrecapture(mPreviewRequestBuilder); // START
+                  Log.e(TAG, "3");
 
+                } else {
+                  Log.e(TAG, "4");
                 }
 
-              } else if (CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState) {
-                mState = STATE_WAITING_FOCUS_LOCK;
-                retryLockFocus(); // CANCEL -> START
-
+              } else {
+                Log.e(TAG, "5" + afState);
               }
               break;
             }
@@ -737,6 +761,9 @@ public class CaptureFragment extends Fragment {
 
               if (aeState == null || aeState == CaptureRequest.CONTROL_AE_STATE_PRECAPTURE) {
                 mState = STATE_WAITING_NON_PRECAPTURE;
+                Log.e(TAG, "7");
+              } else {
+                Log.e(TAG, "8" + aeState);
               }
               break;
             }
@@ -750,13 +777,33 @@ public class CaptureFragment extends Fragment {
                 if (null == awbState || CaptureResult.CONTROL_AWB_STATE_CONVERGED == awbState) {
                   mState = STATE_PICTURE_TAKEN;
                   captureStillPicture(); // START
+                  Log.e(TAG, "9");
 
-                } /* else { // Do nothing } */
+                } else {
+                  Log.e(TAG, "10");
+                }
 
+              } else {
+                Log.e(TAG, "11");
               }
               break;
             }
           }
+        }
+
+        private void limitedProcess(CaptureResult result) {
+          switch (mState) {
+            case STATE_PREVIEW :
+              // Do nothing
+              break;
+            case STATE_WAITING_FOCUS_LOCK :
+              mState = STATE_PICTURE_TAKEN;
+              captureStillPicture(); // START
+              Log.e(TAG, "1");
+          }
+        }
+
+        private void legacyProcess(CaptureResult result) {
         }
 
         @Override
@@ -779,38 +826,31 @@ public class CaptureFragment extends Fragment {
   // STEP /////////////////////////////////////////////////////////////////////////////////////////
 
   private void takePicture() {
-    lockFocus();
+    mState = STATE_WAITING_FOCUS_LOCK;
+    lockFocus(mPreviewRequestBuilder);
   }
 
   /* Set auto lock focusing */
-  private void lockFocus() {
-    mState = STATE_WAITING_FOCUS_LOCK;
+  private void lockFocus(CaptureRequest.Builder initialBuilder) {
     try {
       // Try lock focus
-      initialize3aMode(mPreviewRequestBuilder);
-      mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+      initialBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
           CameraMetadata.CONTROL_AF_TRIGGER_START);
 
-      mCompoundSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
+      mCompoundSession.capture(initialBuilder.build(), mCaptureCallback,
           mBackgroundHandler);
     } catch (CameraAccessException e) {
       e.printStackTrace();
     }
   }
 
-  private void retryLockFocus() {
-    unlockFocus();
-    lockFocus();
-  }
-
-  private void unlockFocus() {
+  private void unlockFocus(CaptureRequest.Builder initialBuilder) {
     try {
       // Initialize 3A mode for camera preview.
-      initialize3aMode(mPreviewRequestBuilder);
-      mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+      initialBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
           CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
 
-      mCompoundSession.capture(mPreviewRequestBuilder.build(), null,
+      mCompoundSession.capture(initialBuilder.build(), mCaptureCallback,
           mBackgroundHandler);
     } catch (CameraAccessException e) {
       e.printStackTrace();
@@ -820,7 +860,6 @@ public class CaptureFragment extends Fragment {
   private void startPreview() {
     try {
       // Finally, we restart displaying the camera preview.
-      mState = STATE_PREVIEW;
       mCompoundSession.setRepeatingRequest(mPreviewRequest, mCaptureCallback, mBackgroundHandler);
     } catch (CameraAccessException e) {
       e.printStackTrace();
@@ -836,12 +875,11 @@ public class CaptureFragment extends Fragment {
   }
 
   /* If it is failed to lock focus, we should set precapture sequence as a next option */
-  private void triggerPrecapture() {
+  private void triggerPrecapture(CaptureRequest.Builder initialBuilder) {
     try {
-      initialize3aMode(mPreviewRequestBuilder);
-      mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+      initialBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
           CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
-      mCompoundSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
+      mCompoundSession.capture(initialBuilder.build(), mCaptureCallback,
           mBackgroundHandler);
     } catch (CameraAccessException e) {
       e.printStackTrace();
@@ -873,7 +911,7 @@ public class CaptureFragment extends Fragment {
                                        @NonNull CaptureRequest request,
                                        @NonNull TotalCaptureResult result) {
           // Shutter sound
-          mShuttuer.play(MediaActionSound.SHUTTER_CLICK);
+          // mShuttuer.play(MediaActionSound.SHUTTER_CLICK);
 
           // Release button
           requestUiChange(UI_LOGIC_RELEASE_CAPTURE_BUTTON);
@@ -881,7 +919,9 @@ public class CaptureFragment extends Fragment {
           // Show test
           BasicUtil.showToast(getActivity(), "Saved : " + mFile);
           Log.d(TAG, mFile.toString());
-          unlockFocus();
+          unlockFocus(mPreviewRequestBuilder);
+
+          mState = STATE_PREVIEW;
           startPreview();
 
           // rescan file
@@ -899,9 +939,21 @@ public class CaptureFragment extends Fragment {
   // STEP /////////////////////////////////////////////////////////////////////////////////////////
 
   private void initialize3aMode(CaptureRequest.Builder previewRequestBuilder) {
-    setPreviewAutoFocus(previewRequestBuilder);
-    setPreviewAutoExposure(previewRequestBuilder);
-    setPreviewAutoWhiteBalance(previewRequestBuilder);
+
+    switch (mHardwareLevel) {
+      case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_3 :
+      case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_FULL :
+        setPreviewAutoFocus(previewRequestBuilder);
+        setPreviewAutoExposure(previewRequestBuilder);
+        setPreviewAutoWhiteBalance(previewRequestBuilder);
+        break;
+      case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED :
+      case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY :
+        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
+        break;
+    }
+
+
   }
 
   /**
