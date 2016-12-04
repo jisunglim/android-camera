@@ -71,6 +71,7 @@ import io.jaylim.study.myapplication.R;
 import io.jaylim.study.myapplication.utils.BasicUtil;
 
 /**
+ *
  * Created by jaylim on 11/22/2016.
  */
 
@@ -207,7 +208,7 @@ public class CaptureFragment extends Fragment {
   private Semaphore mCameraOpenCloseLock = new Semaphore(1);
 
   /* FUNC - Open and close camera device */
-  private MediaActionSound mShuttuer;
+  private MediaActionSound mShutter;
 
   private String mCameraId;
 
@@ -243,9 +244,9 @@ public class CaptureFragment extends Fragment {
         mCompoundSession.close();
         mCompoundSession = null;
       }
-      if (null != mShuttuer) {
-        mShuttuer.release();
-        mShuttuer = null;
+      if (null != mShutter) {
+        mShutter.release();
+        mShutter = null;
       }
       if (null != mCameraDevice) {
         mCameraDevice.close();
@@ -270,8 +271,8 @@ public class CaptureFragment extends Fragment {
       mCameraDevice = camera;
 
       // Shutter sound
-      mShuttuer = new MediaActionSound();
-      mShuttuer.load(MediaActionSound.SHUTTER_CLICK);
+      mShutter = new MediaActionSound();
+      mShutter.load(MediaActionSound.SHUTTER_CLICK);
 
       // Session
       createCameraCompoundSession();
@@ -527,12 +528,10 @@ public class CaptureFragment extends Fragment {
 
     private final Image mImage;
     private final File mFile;
-    // pr2ivate final Handler mUiHandler;
 
-    ImageSaver(Image image, File file/*, Handler uiThreadHandler*/) {
+    ImageSaver(Image image, File file) {
       mImage = image;
       mFile = file;
-      // mUiHandler = uiThreadHandler;
     }
 
     @Override
@@ -546,13 +545,6 @@ public class CaptureFragment extends Fragment {
 
         output = new FileOutputStream(mFile);
         output.write(bytes);
-
-        // Bundle bundle = new Bundle();
-        // bundle.putSerializable("FILE_PATH", mFile);
-
-        // Message msg = Message.obtain();
-        // msg.setData(bundle);
-        // mUiHandler.sendMessage(msg);
 
       } catch (IOException e) {
         e.printStackTrace();
@@ -594,7 +586,7 @@ public class CaptureFragment extends Fragment {
     mUiThreadHandler.sendMessage(msg);
   }
 
-  /* FUNC - UI Thread Hanlder */
+  /* FUNC - UI Thread Handler */
   Handler mUiThreadHandler = new Handler(Looper.getMainLooper()) {
     @Override
     public void handleMessage(Message msg) {
@@ -619,7 +611,7 @@ public class CaptureFragment extends Fragment {
 
   // STEP /////////////////////////////////////////////////////////////////////////////////////////
 
-  /* FUNC - Compount Session */
+  /* FUNC - Compound Session */
   /**
    * Reusable builder for configuration of request builder.
    */
@@ -692,8 +684,6 @@ public class CaptureFragment extends Fragment {
   private static final int STATE_WAITING_NON_PRECAPTURE = 4;
   private static final int STATE_PICTURE_TAKEN = 5;
 
-  private static final String STATE_DIALOG = "stateDialog";
-
   private CameraCaptureSession.CaptureCallback mCaptureCallback =
       new CameraCaptureSession.CaptureCallback() {
 
@@ -736,7 +726,6 @@ public class CaptureFragment extends Fragment {
                   triggerPrecapture(mPreviewRequestBuilder);
 
                 }
-
               }
               break;
             }
@@ -760,6 +749,7 @@ public class CaptureFragment extends Fragment {
                   mState = STATE_PICTURE_TAKEN;
                   captureStillPicture(); // START
                 }
+
               }
               break;
             }
@@ -882,7 +872,7 @@ public class CaptureFragment extends Fragment {
                                        @NonNull CaptureRequest request,
                                        @NonNull TotalCaptureResult result) {
           // Shutter sound
-          // mShuttuer.play(MediaActionSound.SHUTTER_CLICK);
+          mShutter.play(MediaActionSound.SHUTTER_CLICK);
 
           // Release button
           requestUiChange(UI_LOGIC_RELEASE_CAPTURE_BUTTON);
@@ -1052,28 +1042,6 @@ public class CaptureFragment extends Fragment {
       return new AlertDialog.Builder(activity)
           .setMessage(getArguments().getString(ARG_MESSAGE))
           .setPositiveButton(android.R.string.ok, (dialogInterface, i) -> activity.finish())
-          .create();
-    }
-  }
-
-  public static class InformDialog extends DialogFragment {
-    private static final String ARG_MESSAGE = "message";
-
-    public static InformDialog newInstance(String message) {
-      InformDialog dialog = new InformDialog();
-      Bundle args = new Bundle();
-      args.putString(ARG_MESSAGE, message);
-      dialog.setArguments(args);
-      return dialog;
-    }
-
-    @NonNull
-    @Override
-    public Dialog onCreateDialog(Bundle savedInstanceState) {
-      final Activity activity = getActivity();
-      return new AlertDialog.Builder(activity)
-          .setMessage(getArguments().getString(ARG_MESSAGE))
-          .setPositiveButton(android.R.string.ok, (dialogInterface, i) -> this.dismiss())
           .create();
     }
   }
