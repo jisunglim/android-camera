@@ -105,6 +105,7 @@ public class StackBar extends View {
         Log.e(TAG, "mTrashBin is null");
         mTrashBin = getResources().getDrawable(DEFAULT_TRASH_BIN_REF, null);
       }
+
       mButtonHeight = mTrashBin.getIntrinsicHeight();
 
       mBarHeight = attrArray.getDimensionPixelSize(R.styleable.StackBar_barHeight,
@@ -142,6 +143,10 @@ public class StackBar extends View {
     setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), mBarHeight + mButtonHeight);
   }
 
+  public void stratDrawing() {
+
+  }
+
   @Override
   protected void onDraw(Canvas canvas) {
     int paddingLeft = getPaddingLeft();
@@ -177,6 +182,7 @@ public class StackBar extends View {
         (int) (curOffset + width/2.0), mBarHeight + mButtonHeight);
 
     mTrashBin.draw(canvas);
+
   }
 
   /**

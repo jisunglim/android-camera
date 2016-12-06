@@ -9,6 +9,6 @@
     </style>
 
     <!-- No action bar theme. -->
-    <style name="MaterialTheme" parent="Theme.AppCompat.Light.NoActionBar"/>
+    <style name="CameraTheme" parent="Theme.AppCompat.Light.NoActionBar"/>
 
 </resources>

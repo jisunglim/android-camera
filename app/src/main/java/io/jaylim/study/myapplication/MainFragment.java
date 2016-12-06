@@ -15,6 +15,7 @@ import butterknife.Unbinder;
 import io.jaylim.study.myapplication.capture.CaptureActivity;
 import io.jaylim.study.myapplication.preview.PreviewActivity;
 import io.jaylim.study.myapplication.utils.BasicUtil;
+import io.jaylim.study.myapplication.video.VideoActivity;
 
 /**
  * Created by jaylim on 11/24/2016.
@@ -59,7 +60,7 @@ public class MainFragment extends Fragment {
         startActivity(CaptureActivity.newIntent(activity)));
 
     mCameraVideoButton.setOnClickListener(v ->
-        BasicUtil.showToast(getActivity(), "Unavailable"));
+        startActivity(VideoActivity.newIntent(activity)));
 
     mCameraButton.setOnClickListener(v ->
         BasicUtil.showToast(getActivity(), "Unavailable"));

@@ -25,4 +25,7 @@
     <string name="video_music_button_desc">Select a background music.</string>
     <string name="video_library_button_desc">Choose videos from library.</string>
     <string name="video_selfie_mode_button_desc">Shift into selfie or scene mode.</string>
+
+    <string name="video_request_permission">This sample needs permission for camera audio, and storage access recording.</string>
+    <string name="video_camera_error">This device doesn\'t support Camera2 API.</string>
 </resources>

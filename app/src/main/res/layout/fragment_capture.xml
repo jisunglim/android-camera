@@ -22,7 +22,7 @@
         custom:stackColor="#FFFFFF"
         custom:dividerColor="#E8474E"
         custom:barHeight="15dp"
-        custom:trashBin="@drawable/camera_trash_bin_button_30dp"/>
+        custom:trashBin="@drawable/camera_trashbin_button_center_30dp"/>
 
 
     <ImageButton
@@ -100,7 +100,7 @@
         android:layout_marginStart="10dp"
         android:layout_marginBottom="10dp"
         android:background="#00000000"
-        android:src="@drawable/camera_ok_button_30dp"
+        android:src="@drawable/camera_ok_button_active_30dp"
         android:contentDescription="@string/capture_selfie_mode_button_desc"/>
 
 </RelativeLayout>

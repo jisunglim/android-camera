@@ -6,6 +6,8 @@
     <uses-permission android:name="android.hardware.camera.autofocus"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.FLASHLIGHT"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
 
     <application
         android:allowBackup="true"
@@ -23,23 +25,23 @@
         </activity>
 
         <activity
-            android:name=".camera1.CameraOneActivity"
-            android:screenOrientation="portrait"/>
-        <activity
-            android:name=".camera1.TextureCameraActivity"
-            android:screenOrientation="portrait"/>
-
-        <activity
             android:name=".camera2.CameraPreviewActivity"
             android:screenOrientation="portrait"/>
 
         <activity
             android:name=".preview.PreviewActivity"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="portrait"
+            android:theme="@style/CameraTheme"/>
 
         <activity
             android:name=".capture.CaptureActivity"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="portrait"
+            android:theme="@style/CameraTheme"/>
+
+        <activity
+            android:name=".video.VideoActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/CameraTheme"/>
     </application>
 
 </manifest>

@@ -116,7 +116,7 @@ public class CaptureFragment extends Fragment {
 
   @OnClick(R.id.capture_texture_view)
   public void _triggerFocus() {
-
+    lockFocus(mPreviewRequestBuilder);
   }
 
   // STEP - STORAGE DIR ///////////////////////////////////////////////////////////////////////////
@@ -967,17 +967,7 @@ public class CaptureFragment extends Fragment {
   private void startBackgroundThread() {
     mBackgroundThread = new HandlerThread("CameraBackground");
     mBackgroundThread.start();
-    mBackgroundHandler = new Handler(mBackgroundThread.getLooper()) {
-      @Override
-      public void handleMessage(Message msg) {
-        super.handleMessage(msg);
-      }
-
-      @Override
-      public void dispatchMessage(Message msg) {
-        super.dispatchMessage(msg);
-      }
-    };
+    mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
   }
 
   private void stopBackgroundThread() {
@@ -1020,7 +1010,7 @@ public class CaptureFragment extends Fragment {
   // STEP /////////////////////////////////////////////////////////////////////////////////////////
 
   /* FUNC - Permission logic */
-  private final String FRAGMENT_DIALOG = "dialog";
+  private static final String FRAGMENT_DIALOG = "dialog";
 
   private static final int REQUEST_CAMERA_PERMISSION = 1;
 
