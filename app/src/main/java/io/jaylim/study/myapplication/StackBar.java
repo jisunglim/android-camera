@@ -35,6 +35,12 @@ public class StackBar extends View {
   private static final int DEFAULT_MAXIMUM_TIME = 15;
 
   /**
+   * Default minimum time which is measured by unit second (1s). It will be marked on the bar
+   * so that it indicates the minimum time threshold.
+   */
+  private static final int DEFAULT_MINIMUM_TIME = 5;
+
+  /**
    * The default background color.
    */
   private static final int DEFAULT_BACKGROUND_COLOR = 0x7fd7dadb;
@@ -50,31 +56,13 @@ public class StackBar extends View {
    */
   private static final int DEFAULT_DIVIDER_COLOR = 0xffe8474e;
 
-  /**
-   * The id of default drawable resource.
-   */
-  private static final int DEFAULT_TRASH_BIN_REF = R.drawable.stack_bar_trash_bin;
-
-  /**
-   * The default height of stack bar.
-   */
-  private static final int DEFAULT_BAR_HEIGHT = 15;
-
-  /**
-   * The stack which is for storing intervals.
-   */
-  private Stack<Segment> mSegmentsStack;
-
-
-
   private int mMaximumTime;
+  private int mMinimumTime;
+
   private int mBackgroundColor;
   private int mStackColor;
   private int mDividerColor;
-  private Drawable mTrashBin;
 
-  private int mBarHeight;
-  private int mButtonHeight;
 
   public StackBar(Context context) {
     this(context, null);
@@ -93,24 +81,15 @@ public class StackBar extends View {
     try {
       mMaximumTime = attrArray.getInt(R.styleable.StackBar_maximumTime, DEFAULT_MAXIMUM_TIME);
 
+      mMinimumTime = attrArray.getInt(R.styleable.StackBar_minimumTime, DEFAULT_MINIMUM_TIME);
+
+
       mBackgroundColor = attrArray.getColor(R.styleable.StackBar_backgroundColor,
           DEFAULT_BACKGROUND_COLOR);
 
       mStackColor = attrArray.getColor(R.styleable.StackBar_stackColor, DEFAULT_STACK_COLOR);
 
       mDividerColor = attrArray.getColor(R.styleable.StackBar_dividerColor, DEFAULT_DIVIDER_COLOR);
-
-      mTrashBin = attrArray.getDrawable(R.styleable.StackBar_trashBin);
-      if (mTrashBin == null) {
-        Log.e(TAG, "mTrashBin is null");
-        mTrashBin = getResources().getDrawable(DEFAULT_TRASH_BIN_REF, null);
-      }
-
-      mButtonHeight = mTrashBin.getIntrinsicHeight();
-
-      mBarHeight = attrArray.getDimensionPixelSize(R.styleable.StackBar_barHeight,
-          (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, DEFAULT_BAR_HEIGHT,
-              getResources().getDisplayMetrics()));
 
     } finally {
       attrArray.recycle();
@@ -120,6 +99,8 @@ public class StackBar extends View {
     initPaint();
   }
 
+  private Paint mThresholdPaint;
+
   private Paint mBackgroundPaint;
 
   private Paint mStackPaint;
@@ -127,6 +108,10 @@ public class StackBar extends View {
   private Paint mDividerPaint;
 
   private void initPaint() {
+    mThresholdPaint = new Paint();
+    mThresholdPaint.setColor(mDividerColor);
+    mThresholdPaint.setStrokeWidth(5.0f);
+
     mBackgroundPaint = new Paint();
     mBackgroundPaint.setColor(mBackgroundColor);
 
@@ -139,15 +124,6 @@ public class StackBar extends View {
   }
 
   @Override
-  protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), mBarHeight + mButtonHeight);
-  }
-
-  public void stratDrawing() {
-
-  }
-
-  @Override
   protected void onDraw(Canvas canvas) {
     int paddingLeft = getPaddingLeft();
     int paddingTop = getPaddingTop();
@@ -157,50 +133,21 @@ public class StackBar extends View {
     int contentWidth = getWidth() - paddingLeft - paddingRight;
     int contentHeight = getHeight() - paddingTop - paddingBottom;
 
-    RectF mBackgroundRectF = new RectF(0.0f, 0.0f, contentWidth, mBarHeight);
+    RectF mBackgroundRectF = new RectF(0.0f, 0.0f, contentWidth, contentHeight);
 
+    float minThreshold = contentWidth * mMinimumTime / mMaximumTime;
     float curOffset = contentWidth/7.0f;
-    RectF mStackRectF = new RectF(0.0f, 0.0f, curOffset, mBarHeight);
+    RectF mStackRectF = new RectF(0.0f, 0.0f, curOffset, contentHeight);
 
 
-    Log.i(TAG, "draw background : {" + 0.0f + ", " + 0.0f + ", " + contentWidth + ", " + mBarHeight + "}");
+    Log.i(TAG, "draw background : {" + 0.0f + ", " + 0.0f + ", " + contentWidth + ", " + contentHeight + "}");
     canvas.drawRect(mBackgroundRectF, mBackgroundPaint);
-    Log.i(TAG, "draw stack : {" + 0.0f + ", " + 0.0f + ", " + curOffset + ", " + mBarHeight + "}");
+    canvas.drawLine(minThreshold, 0.0f, minThreshold, contentHeight, mThresholdPaint);
+
+    Log.i(TAG, "draw stack : {" + 0.0f + ", " + 0.0f + ", " + curOffset + ", " + contentHeight + "}");
     canvas.drawRect(mStackRectF, mStackPaint);
+
     Log.i(TAG, "draw divider : {" + curOffset + "}");
-    canvas.drawLine(curOffset, 0.0f, curOffset, mBarHeight, mDividerPaint);
-
-    int width = mTrashBin.getIntrinsicWidth();
-
-    Log.i(TAG, "draw trashbin : {" +
-        (curOffset - width/2.0) + ", " +
-        mBarHeight + ", " +
-        (curOffset +  width/2.0) + ", " +
-        mBarHeight + mButtonHeight + "}");
-
-    mTrashBin.setBounds((int) (curOffset - width/2.0), mBarHeight,
-        (int) (curOffset + width/2.0), mBarHeight + mButtonHeight);
-
-    mTrashBin.draw(canvas);
-
-  }
-
-  /**
-   * Segment class
-   */
-  private class Segment {
-
-    private float mStart;
-    private float mEnd;
-
-    Segment(float offset) {
-      // Set start with offset value
-      mStart = offset;
-
-      // Set end with maximum time
-      mEnd = (float) mMaximumTime;
-
-    }
-
+    canvas.drawLine(curOffset, 0.0f, curOffset, contentHeight, mDividerPaint);
   }
 }
