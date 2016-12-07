@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent">
+                xmlns:custom="http://schemas.android.com/apk/res-auto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
 
     <io.jaylim.study.myapplication.preview.ResizableTextureView
         android:id="@+id/preview_texture_view"
@@ -10,36 +11,17 @@
         android:layout_centerHorizontal="true"
         android:layout_centerVertical="true"/>
 
-    <ImageButton
-        android:id="@+id/preview_capture_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="40dp"
-        android:background="#00000000"
-        android:src="@drawable/capture_capture_button_release_70dp"/>
+    <io.jaylim.study.myapplication.StackBar
+        android:id="@+id/video_stack_bar"
+        android:layout_width="match_parent"
+        android:layout_height="15dp"
+        android:layout_alignParentTop="true"
 
-    <ImageButton
-        android:id="@+id/preview_resize_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentEnd="true"
-        android:layout_marginBottom="55dp"
-        android:layout_marginEnd="55dp"
-        android:background="#00000000"
-        android:src="@drawable/preview_resize_button_40dp"/>
+        custom:maximumTime="15"
+        custom:minimumTime="5"
+        custom:backgroundColor="#7fd7dadb"
+        custom:stackColor="#FFFFFF"
+        custom:dividerColor="#E8474E"/>
 
-    <ImageButton
-        android:id="@+id/preview_selfie_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginBottom="55dp"
-        android:layout_marginStart="55dp"
-        android:background="#00000000"
-        android:src="@drawable/preview_selfie_button_40dp"/>
 
 </RelativeLayout>

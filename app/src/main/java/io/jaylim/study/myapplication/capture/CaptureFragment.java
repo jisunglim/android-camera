@@ -115,8 +115,8 @@ public class CaptureFragment extends Fragment {
   }
 
   @OnClick(R.id.capture_texture_view)
-  public void _triggerFocus() {
-    lockFocus(mPreviewRequestBuilder);
+  public void _triggerAutoFocus() {
+    unlockFocus(mPreviewRequestBuilder);
   }
 
   // STEP - STORAGE DIR ///////////////////////////////////////////////////////////////////////////
@@ -707,7 +707,6 @@ public class CaptureFragment extends Fragment {
               break;
             case STATE_WAITING_FOCUS_LOCK: { /* Only AF is triggered */
               Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
-
               if (null == afState || CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState
                   || CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState) {
                 Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
@@ -771,6 +770,10 @@ public class CaptureFragment extends Fragment {
         public void onCaptureProgressed(@NonNull CameraCaptureSession session,
                                         @NonNull CaptureRequest request,
                                         @NonNull CaptureResult partialResult) {
+          Log.e(TAG,"STATE" + partialResult.get(CaptureResult.CONTROL_AF_STATE));
+          if (request.get(CaptureRequest.CONTROL_AF_TRIGGER) == CaptureRequest.CONTROL_AF_TRIGGER_START) {
+            Log.e(TAG, "Trigger focusing on preview");
+          }
           process(partialResult);
         }
 
@@ -778,7 +781,10 @@ public class CaptureFragment extends Fragment {
         public void onCaptureCompleted(@NonNull CameraCaptureSession session,
                                        @NonNull CaptureRequest request,
                                        @NonNull TotalCaptureResult result) {
-
+          Log.e(TAG,"STATE" + result.get(CaptureResult.CONTROL_AF_STATE));
+          if (request.get(CaptureRequest.CONTROL_AF_TRIGGER) == CaptureRequest.CONTROL_AF_TRIGGER_START) {
+            Log.e(TAG, "Trigger focusing on preview");
+          }
           process(result);
         }
       };
