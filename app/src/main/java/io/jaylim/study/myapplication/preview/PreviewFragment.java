@@ -72,28 +72,6 @@ public class PreviewFragment extends Fragment {
   @Override
   public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
     super.onViewCreated(view, savedInstanceState);
-    view.findViewById(R.id.preview_capture_button).setOnTouchListener( (v, e) -> {
-      switch(e.getAction()) {
-        case MotionEvent.ACTION_DOWN :
-          // TODO - start/restart video recording
-
-          return true;
-        case MotionEvent.ACTION_UP :
-          // TODO - pause/stop video recording
-
-          return true;
-        default:
-          return false;
-      }
-    });
-
-    view.findViewById(R.id.preview_resize_button).setOnClickListener(v -> {
-      // TODO - Resize preview
-    });
-
-    view.findViewById(R.id.preview_selfie_button).setOnClickListener(v -> {
-      // Shift selfie mode
-    });
     mTextureView = (ResizableTextureView) view.findViewById(R.id.preview_texture_view);
   }
 

@@ -14,15 +14,14 @@
     <io.jaylim.study.myapplication.StackBar
         android:id="@+id/video_stack_bar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="15dp"
         android:layout_alignParentTop="true"
 
         custom:maximumTime="15"
+        custom:minimumTime="5"
         custom:backgroundColor="#7fd7dadb"
         custom:stackColor="#FFFFFF"
-        custom:dividerColor="#E8474E"
-        custom:barHeight="15dp"
-        custom:trashBin="@drawable/camera_trashbin_button_center_30dp"/>
+        custom:dividerColor="#E8474E"/>
 
 
     <ImageButton
